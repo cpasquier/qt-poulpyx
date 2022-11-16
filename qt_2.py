@@ -12,24 +12,17 @@ from matplotlib.backends.qt_compat import QtWidgets
 from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 
-
 app = QApplication(sys.argv)
 app.setStyle('Fusion')
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        global Hwidget1, Hbox1, scroll_exist, scan_scroll, scan_scroll, ax, coord
+        global Hwidget1, Hbox1, scan_scroll, scan_scroll, ax, coord
         super().__init__()
         self.setWindowTitle("PoulPyX")
-        self.setFixedSize(QSize(1600,900))   # to change later
+        self.setFixedSize(QSize(1600,900))   #### TO CHANGE LATER ACCORDING TO SCREEN SIZE
         
-        coord = []
-
-        # Boutons OK/quitter
-        button1 = QDialogButtonBox(self)
-        button1.setGeometry(1360, 770, 193, 28)
-        button1.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
-        ############## METTRE EN VERTICAL !! NB : NE MARCHE PAS AVEC VERTICAL LAYOUT #############
+        coord = []   # For later saving of coordinates clicked on the graph
 
         # Figure
         Hwidget4 = QWidget(self)
@@ -40,38 +33,50 @@ class MainWindow(QMainWindow):
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
         ax = self.figure.add_subplot(111)
-        #plt.gca().set_position([0.04, 0.08, 0.94, 0.9])
         plt.tight_layout()
         Hbox4.addWidget(self.canvas)	
         Hbox4.addWidget(NavigationToolbar(self.canvas, self))
         self.canvas.draw()
 
         # Create horizontal box for lineup selection button and scan selection
-        scroll_exist=0
-
         Hwidget1 = QWidget(self)
         Hwidget1.setGeometry(20, 20, 261, 80)
         Hbox1 = QHBoxLayout(Hwidget1)
         Hbox1.setContentsMargins(0, 0, 0, 0)
 
         # Lineup selection buttons 
-        lineup_button = QPushButton("Select lineup file",Hwidget1)    # select the lineup file
+        lineup_button = QPushButton("Select lineup file", Hwidget1)    # select the lineup file
         Hbox1.addWidget(lineup_button)
         lineup_button.setGeometry(200, 150, 150, 50)
 
         # Scan selection scroll
         scan_scroll = QSpinBox(Hwidget1)    # choose scan number
-        scan_scroll.setMinimum(0)    # initialize with no scan choice
+        scan_scroll.setMinimum(0)           # initialize with no scan choice
         scan_scroll.setMaximum(0)
         Hbox1.addWidget(scan_scroll)
 
         lineup_button.clicked.connect(self.lineup_clicked)   # Opens the file selction window when button clicked 
         scan_scroll.valueChanged.connect(self.scan_changed)  # Creates a signal of scan change to change the transmission figure
+
+        # Cursor for the figure / clickable
         self.canvas.mpl_connect('button_press_event', self.onclick)
-        #plt.show()
+
+        # Button to refresh the table, button ok, button cancel
+        Vwidget1 = QWidget(self)
+        Vwidget1.setGeometry(1410, 790, 160, 91)
+        Vbox1 = QVBoxLayout(Vwidget1)
+        Vbox1.setContentsMargins(0, 0, 0, 0)
+
+        refresh_button = QPushButton("Refresh table",self)
+        refresh_button.setGeometry(1400, 370, 158, 28)
+
+        ok_button = QPushButton("OK",Vwidget1)
+        Vbox1.addWidget(ok_button)
+        cancel_button = QPushButton("Cancel",Vwidget1)
+        Vbox1.addWidget(cancel_button)
 
         # Table
-        nbcol = 5  # TO CHANGE WITH NUMBER OF POINTS
+        nbcol = 5  # TO CHANGE WITH NUMBER OF POINTS : SEE BUTTON REFRESH
         table = QTableWidget(self)
         table.setRowCount(8)
         table.setColumnCount(nbcol)
@@ -98,7 +103,7 @@ class MainWindow(QMainWindow):
 
 
     def lineup_clicked(self):
-        global scroll_exist, scan_scroll, lineup
+        global scan_scroll, lineup
         lineup_sel = QFileDialog.getOpenFileName()
         lineup = lineup_sel[0] 
         lineup_file = open(lineup, 'r')
@@ -116,7 +121,7 @@ class MainWindow(QMainWindow):
                     smax=b
         scan_scroll.setMinimum(smin)    # update the scroll max/min number in function of numnber of scans
         scan_scroll.setMaximum(smax)
-        ############ ERREUR / CRASH SI PAS LE BON FORMAT DE FICHIER --> FAIRE SECURITE CONTRE CA ##############
+        ############ ERREUR / CRASH SI PAS LE BON FORMAT DE FICHIER --> FAIRE SECURITE ##############
 
     def scan_changed(self):
         scan_value = scan_scroll.value()
@@ -142,7 +147,7 @@ class MainWindow(QMainWindow):
         ax.clear()
         ax.plot(xpos_list, tr_list, ls='-', marker='o', color='b', ms=4)	
         self.cursor = Cursor(ax, horizOn=True, vertOn=True, useblit=True, color = 'r', linewidth = 1)	# Tadaaaaaaah !
-        self.canvas.draw()
+        self.canvas.draw()      ##### CHANGEMENT DE TYPE DE TRACE QD CLICK : A CORRIGER ##########
     
     def onclick(self,event):   # saves the clicked coordinates
         x = event.xdata
@@ -162,7 +167,20 @@ class MainWindow(QMainWindow):
         if flipper==0:
             coord.append((x,y))     
 
-        print(coord)
+        # Clear all markers and text (necessary for unclicking procedure)
+        for aline in ax.lines:
+            aline.set_marker(None)
+        for txt in ax.texts:
+            txt.set_visible(False)
+
+        # Redraw with updated points
+        nb = 0
+        for ctuple2 in coord:
+            nb = nb+1
+            ax.plot(ctuple2[0],ctuple2[1], marker='+', color='r', mew=2.0, ms=8)
+            #ax.text(ctuple2[0]-0.4,ctuple2[1]-(tr_max-tr_min)/12, str(nb), color='r', weight='bold')   ### VOIR OU PLACER TEXTE CHIFFRE ####
+        self.canvas.draw()    #redraw the figure
+        #plt.savefig(figpath, bbox_inches='tight',dpi=100)
 
 
 window = MainWindow()
