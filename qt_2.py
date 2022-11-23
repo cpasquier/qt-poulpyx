@@ -5,22 +5,31 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Cursor
 matplotlib.use('Qt5Agg')
 import numpy as np
+import os
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QSpinBox, QHBoxLayout, QWidget, QTableWidget, \
     QTableWidgetItem, QCheckBox, QComboBox, QVBoxLayout, QLabel, QTextEdit, QDialogButtonBox
 from matplotlib.backends.qt_compat import QtWidgets
 from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
+import pandas as pd
+from datetime import date
+from os import listdir
+from os.path import isfile, join
 
 app = QApplication(sys.argv)
 app.setStyle('Fusion')
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        global Hwidget1, Hbox1, scan_scroll, scan_scroll, ax, coord
+        global Hwidget1, Hbox1, scan_scroll, scan_scroll, ax, coord, table, nbcol, daydate, initials_text
         super().__init__()
         self.setWindowTitle("PoulPyX")
-        self.setFixedSize(QSize(1600,900))   #### TO CHANGE LATER ACCORDING TO SCREEN SIZE
+        self.setFixedSize(QSize(1600,900))   #### TO CHANGE LATER ACCORDING TO SCREEN 
+        
+        # Get the date of the day for file numbering
+        today = date.today()
+        daydate = today.strftime("%y%m%d")
         
         coord = []   # For later saving of coordinates clicked on the graph
 
@@ -67,16 +76,19 @@ class MainWindow(QMainWindow):
         Vbox1 = QVBoxLayout(Vwidget1)
         Vbox1.setContentsMargins(0, 0, 0, 0)
 
-        refresh_button = QPushButton("Refresh table",self)
-        refresh_button.setGeometry(1400, 370, 158, 28)
+        update_button = QPushButton("Update table",self)
+        update_button.setGeometry(1400, 370, 158, 28)
+        update_button.clicked.connect(self.update_clicked)
 
-        ok_button = QPushButton("OK",Vwidget1)
-        Vbox1.addWidget(ok_button)
+        macro_button = QPushButton("Generate macro",Vwidget1)
+        Vbox1.addWidget(macro_button)
+        macro_button.clicked.connect(self.macro_clicked)
         cancel_button = QPushButton("Cancel",Vwidget1)
         Vbox1.addWidget(cancel_button)
+        #### ADD CANCEL OPTION #######
 
         # Table
-        nbcol = 5  # TO CHANGE WITH NUMBER OF POINTS : SEE BUTTON REFRESH
+        nbcol = 1  
         table = QTableWidget(self)
         table.setRowCount(8)
         table.setColumnCount(nbcol)
@@ -86,42 +98,47 @@ class MainWindow(QMainWindow):
         for i in range(nbcol):
             check1 = QCheckBox()    # Check box for "same as previous"
             scroll1 = QComboBox()   # Scroll for "sample/air/lupo"
-            scroll1.addItems(["Air", "Lupo/PE", "Sample"])
+            scroll1.addItems(["Sample", "Air", "Water", "Empty campillary", "Lupo/PE"])
             table.setCellWidget(6, i, check1)
             table.setCellWidget(1, i, scroll1)
 
-        # Temperatures and initials
+        # Temperatures, repetitions and initials
+        repetitions_label = QLabel("Nr. repetitions", self)
+        repetitions_label.setGeometry(20, 130, 85, 60)
+        repetitions_text = QTextEdit(self)
+        repetitions_text.setGeometry(120,140, 150, 40)
+
         temp_label = QLabel("Temperatures", self)
-        temp_label.setGeometry(30, 150, 100, 30)
+        temp_label.setGeometry(20, 190, 85, 60)
         temp_text = QTextEdit(self)
-        temp_text.setGeometry(125, 150, 150, 50)
+        temp_text.setGeometry(120, 200, 150, 40)
 
         initials_label = QLabel("Initials", self)
-        initials_label.setGeometry(70, 250, 100, 30)
+        initials_label.setGeometry(20, 250, 80, 60)
         initials_text = QTextEdit(self)
-        initials_text.setGeometry(125, 250, 150, 30)
+        initials_text.setGeometry(120,260, 150, 40)
 
 
     def lineup_clicked(self):
         global scan_scroll, lineup
         lineup_sel = QFileDialog.getOpenFileName()
         lineup = lineup_sel[0] 
-        lineup_file = open(lineup, 'r')
-        lineup_lines = lineup_file.readlines()
-        lineup_file.close()
-        smax = -100
-        smin = 100
-        for line in lineup_lines:    # we get the number of scans
-            if ("#S ") in line:
-                a = line.split()
-                b = int(a[1])
-                if b<smin:
-                    smin=b
-                if b>smax:
-                    smax=b
-        scan_scroll.setMinimum(smin)    # update the scroll max/min number in function of numnber of scans
-        scan_scroll.setMaximum(smax)
-        ############ ERREUR / CRASH SI PAS LE BON FORMAT DE FICHIER --> FAIRE SECURITE ##############
+        if "_lineup" in lineup:
+            lineup_file = open(lineup, 'r')
+            lineup_lines = lineup_file.readlines()
+            lineup_file.close()
+            smax = -100
+            smin = 100
+            for line in lineup_lines:    # we get the number of scans
+                if ("#S ") in line:
+                    a = line.split()
+                    b = int(a[1])
+                    if b<smin:
+                        smin=b
+                    if b>smax:
+                        smax=b
+            scan_scroll.setMinimum(smin)    # update the scroll max/min number in function of numnber of scans
+            scan_scroll.setMaximum(smax)
 
     def scan_changed(self):
         scan_value = scan_scroll.value()
@@ -137,7 +154,7 @@ class MainWindow(QMainWindow):
                 a = line.split()
                 b = a[6]          #counts the number of theoretically measured points (input for ascan)
                 for j in np.arange(i+14, i+14+int(b)+1, 1):
-                    if ("#C") in lineup_lines[j]:      #'#C' means the end of measurement (even if aborted)
+                    if ("#C") in lineup_lines[j]:      # '#C' means the end of measurement (even if aborted)
                         break      #if there are not enough points (aborted), stops before the #C line anyway
                     else:
                         c = lineup_lines[j].split()
@@ -181,6 +198,53 @@ class MainWindow(QMainWindow):
             #ax.text(ctuple2[0]-0.4,ctuple2[1]-(tr_max-tr_min)/12, str(nb), color='r', weight='bold')   ### VOIR OU PLACER TEXTE CHIFFRE ####
         self.canvas.draw()    #redraw the figure
         #plt.savefig(figpath, bbox_inches='tight',dpi=100)
+
+    def update_clicked(self):
+        table.setColumnCount(len(coord))
+        for i in range(len(coord)):
+            check1 = QCheckBox()    #check box for "same as previous"
+            scroll1 = QComboBox()   #scroll for "sample/air/lupo/ec"
+            scroll1.addItems(["Sample", "Air", "Water", "Empty campillary", "Lupo/PE"])
+            table.setCellWidget(1, i, scroll1)
+            xval = QTableWidgetItem(str(round(coord[i][0], 1)))   #we have to switch to str for filling the cells
+            fval = QTableWidgetItem(str(round(coord[i][1])))
+            table.setItem(2, i, xval)
+            table.setItem(4, i, fval)
+            table.setCellWidget(6, i, check1)
+
+    def macro_clicked(self):
+        column_nb = table.columnCount()
+        df = pd.DataFrame()
+        for i in [0,1,2,3,4,5,7]:
+            for j in range(column_nb):
+                widget = table.cellWidget(i,j)
+                if isinstance(widget, QComboBox):
+                    cell_value = widget.currentText()
+                else:
+                    try:
+                        cell_value = table.item(i, j).text()
+                    except:
+                        cell_value = "0" 
+                df.loc[i, j] = cell_value
+                # [0='Name', 1='Meas. type', 2='x pos.', 3='z pos.', 4='Flux', 5='Measurement time (s)', 7='Thickness (cm)']
+
+        workdir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        initials = initials_text.toPlainText()
+        path1 = str(daydate)+'_'+str(initials)
+
+        extentlist = ["_macro.mac", "_parameters.csv", "_lupo.txt"]
+        filelist= [f for f in listdir(workdir) if isfile(join(workdir, f))]   ## Note : workdir remplace pfx
+
+        a2 = path1   #incrementation of names of macro, parameters, lupo files if necessary
+        for inc in np.arange(2,1001,1):
+            if any((str(a2)+i) in filelist for i in extentlist):
+                a2 = path1+'-'+str(inc)
+            else:
+                break
+
+        macropath = os.path.join(workdir,str(a2)+"_macro.mac")
+        parampath =  os.path.join(pfx,str(a2)+"_parameters.csv")
+        lupopath =  os.path.join(pfx,str(a2)+"_lupo.txt")
 
 
 window = MainWindow()
