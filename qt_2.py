@@ -22,7 +22,7 @@ app.setStyle('Fusion')
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        global Hwidget1, Hbox1, scan_scroll, scan_scroll, ax, coord, table, nbcol, daydate, initials_text
+        global Hwidget1, Hbox1, scan_scroll, scan_scroll, ax, coord, table, nbcol, daydate, initials_text, temp_text, repetitions_text
         super().__init__()
         self.setWindowTitle("PoulPyX")
         self.setFixedSize(QSize(1600,900))   #### TO CHANGE LATER ACCORDING TO SCREEN 
@@ -229,9 +229,14 @@ class MainWindow(QMainWindow):
                 # [0='Name', 1='Meas. type', 2='x pos.', 3='z pos.', 4='Flux', 5='Measurement time (s)', 7='Thickness (cm)']
 
         workdir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
-        initials = initials_text.toPlainText()
-        path1 = str(daydate)+'_'+str(initials)
 
+        temperatures = temp_text.toPlainText()
+        initials = initials_text.toPlainText()
+        repetitions = repetitions_text.toPlainText()
+
+        temp_str_list = temperatures.split(',')  #split des températures
+
+        path1 = str(daydate)+'_'+str(initials)
         extentlist = ["_macro.mac", "_parameters.csv", "_lupo.txt"]
         filelist= [f for f in listdir(workdir) if isfile(join(workdir, f))]   ## Note : workdir remplace pfx
 
@@ -242,9 +247,55 @@ class MainWindow(QMainWindow):
             else:
                 break
 
-        macropath = os.path.join(workdir,str(a2)+"_macro.mac")
-        parampath =  os.path.join(pfx,str(a2)+"_parameters.csv")
-        lupopath =  os.path.join(pfx,str(a2)+"_lupo.txt")
+        # Create macro
+        ztest = ''
+        temptest = ''
+        heat = False
+        cool = False
+        tempreg = False  #checks if the temperature regulation has been used
+        tr_vac = ''
+        templine = ''
+
+        macropath = os.path.join(workdir,str(a2)+"_macro.mac")    ## Note : macropath remplace runpath
+        parampath =  os.path.join(workdir,str(a2)+"_parameters.csv")
+        lupopath =  os.path.join(workdir,str(a2)+"_lupo.txt")
+
+        with open(macropath, 'w') as f:
+            f.write('sc'+'\n')
+            f.write('\n')
+            if temp_str_list!='':
+                for temp_sample in temp_str_list:
+                    if temp_sample!='' and temp_sample!=temptest:  #if temp is the same or if temp field is not filled, we don't write set_temp again
+                        tempreg = True
+                        if 40 >= float(temp_sample) >= 10:    #loops for conditions on turning on/off heating and cooling
+                            if heat==False:
+                                f.write('heat_on'+'\n')
+                                heat=True
+                            if cool==False:
+                                f.write('cool_on'+'\n')
+                                cool=True
+                        if float(temp_sample) > 40:
+                            if heat==False:
+                                f.write('heat_on'+'\n')
+                                heat=True
+                            if cool==True:
+                                f.write('cool_off'+'\n')
+                                cool = False
+                        if float(temp_sample) < 10:
+                            if heat==True:
+                                f.write('heat_off'+'\n')
+                                heat=False
+                            if cool==False:
+                                f.write('cool_on'+'\n')
+                                cool = True
+                        sleep_time = 900     #standard 15 min for equilibration
+                        f.write('set_temp '+str(temp_sample)+'\n')
+                        f.write('sleep('+str(sleep_time)+')'+'\n')
+
+                    templine = '_T'+str(temp_sample)
+                    temptest = temp_sample     ##### SHIFTED
+
+                    ######## FINISH MACRO
 
 
 window = MainWindow()
