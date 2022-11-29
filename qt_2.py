@@ -8,7 +8,7 @@ import numpy as np
 import os
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QSpinBox, QHBoxLayout, QWidget, QTableWidget, \
-    QTableWidgetItem, QCheckBox, QComboBox, QVBoxLayout, QLabel, QTextEdit, QDialogButtonBox
+    QTableWidgetItem, QCheckBox, QComboBox, QVBoxLayout, QLabel, QTextEdit, QDialogButtonBox, QMessageBox
 from matplotlib.backends.qt_compat import QtWidgets
 from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
 
         # Figure
         Hwidget4 = QWidget(self)
-        Hwidget4.setGeometry(10, 355, 1361, 535)
+        Hwidget4.setGeometry(10, 320, 1361, 580)
         Hbox4 = QVBoxLayout(Hwidget4)
         Hbox4.setContentsMargins(0, 0, 0, 0)
 
@@ -90,16 +90,14 @@ class MainWindow(QMainWindow):
         # Table
         nbcol = 1  
         table = QTableWidget(self)
-        table.setRowCount(8)
+        table.setRowCount(7)
         table.setColumnCount(nbcol)
-        table.setGeometry(300, 20, 1281, 322)
+        table.setGeometry(300, 20, 1281, 284)
         table.setVerticalHeaderLabels(['Name', 'Meas. type', 'x pos.', 'z pos.', 'Flux', 
-        'Measurement time (s)', 'Same as previous', 'Thickness (cm)'])
+        'Measurement time (s)', 'Thickness (cm)'])
         for i in range(nbcol):
-            check1 = QCheckBox()    # Check box for "same as previous"
             scroll1 = QComboBox()   # Scroll for "sample/air/lupo"
             scroll1.addItems(["Sample", "Air", "Water", "Empty campillary", "Lupo/PE"])
-            table.setCellWidget(6, i, check1)
             table.setCellWidget(1, i, scroll1)
 
         # Temperatures, repetitions and initials
@@ -117,7 +115,6 @@ class MainWindow(QMainWindow):
         initials_label.setGeometry(20, 250, 80, 60)
         initials_text = QTextEdit(self)
         initials_text.setGeometry(120,260, 150, 40)
-
 
     def lineup_clicked(self):
         global scan_scroll, lineup
@@ -139,6 +136,13 @@ class MainWindow(QMainWindow):
                         smax=b
             scan_scroll.setMinimum(smin)    # update the scroll max/min number in function of numnber of scans
             scan_scroll.setMaximum(smax)
+        else:
+            err_lineup = QMessageBox()
+            err_lineup.setIcon(QMessageBox.Critical)
+            err_lineup.setWindowTitle("File error")
+            err_lineup.setText("Not a lineup file")
+            err_lineup.setInformativeText("Please select a file ending with _lineup")
+            err_lineup.exec_()
 
     def scan_changed(self):
         scan_value = scan_scroll.value()
@@ -202,7 +206,6 @@ class MainWindow(QMainWindow):
     def update_clicked(self):
         table.setColumnCount(len(coord))
         for i in range(len(coord)):
-            check1 = QCheckBox()    #check box for "same as previous"
             scroll1 = QComboBox()   #scroll for "sample/air/lupo/ec"
             scroll1.addItems(["Sample", "Air", "Water", "Empty campillary", "Lupo/PE"])
             table.setCellWidget(1, i, scroll1)
@@ -210,12 +213,12 @@ class MainWindow(QMainWindow):
             fval = QTableWidgetItem(str(round(coord[i][1])))
             table.setItem(2, i, xval)
             table.setItem(4, i, fval)
-            table.setCellWidget(6, i, check1)
 
     def macro_clicked(self):
+        global df, column_nb
         column_nb = table.columnCount()
         df = pd.DataFrame()
-        for i in [0,1,2,3,4,5,7]:
+        for i in range(7):   #[0,1,2,3,4,5,6]:
             for j in range(column_nb):
                 widget = table.cellWidget(i,j)
                 if isinstance(widget, QComboBox):
@@ -226,7 +229,7 @@ class MainWindow(QMainWindow):
                     except:
                         cell_value = "0" 
                 df.loc[i, j] = cell_value
-                # [0='Name', 1='Meas. type', 2='x pos.', 3='z pos.', 4='Flux', 5='Measurement time (s)', 7='Thickness (cm)']
+                # [0='Name', 1='Meas. type', 2='x pos.', 3='z pos.', 4='Flux', 5='Measurement time (s)', 6='Thickness (cm)']
 
         workdir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
 
@@ -253,7 +256,7 @@ class MainWindow(QMainWindow):
         heat = False
         cool = False
         tempreg = False  #checks if the temperature regulation has been used
-        tr_vac = ''
+        flux_inc = ''
         templine = ''
 
         macropath = os.path.join(workdir,str(a2)+"_macro.mac")    ## Note : macropath remplace runpath
@@ -293,10 +296,69 @@ class MainWindow(QMainWindow):
                         f.write('sleep('+str(sleep_time)+')'+'\n')
 
                     templine = '_T'+str(temp_sample)
-                    temptest = temp_sample     ##### SHIFTED
+                    temptest = temp_sample   
 
-                    ######## FINISH MACRO
+                    for j in range(column_nb):
+                        type_sample = df.iloc[1,j]
+                        if type_sample == "Air":
+                            flux_inc = df.iloc[4,j]   # Incident flux
+                        else:
+                            name_sample = df.iloc[0,j]
+                            x_sample = df.iloc[2,j]
+                            z_tempor = df.iloc[3,j]  #string
+                            flux_sample = df.iloc[4,j]
+                            time_sample = df.iloc[5,j]
+                            thick_sample = df.iloc[6,j]
+                            z_str_list = z_tempor.split(',')   #split z_temp in a list of strings using comma sep.
 
+                            f.write('umv sax '+str(x_sample)+'\n')   #move to x pos.
+                            for z_sample in z_str_list:
+                                if z_sample != '' and z_sample!= ztest:  #if z is the same or if z-pos field is not filled, we don't write umv saz again
+                                    f.write('umv saz '+str(z_sample)+'\n')
+                                if len(z_str_list) > 1:
+                                    zline ='_z'+str(z_sample)  #puts z value in file name if several
+                                else:
+                                    zline = ''
+                                ztest = z_sample
+
+                                acqline = 'startacq '+str(time_sample)+' '+str(daydate)+'_'+str(initials)+'_'+str(name_sample)
+
+                                testpath1 = workdir+str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine   #for testing if file exists
+                                testpath2 = testpath1
+
+                                for inc in np.arange(2,1001,1):
+                                    if testpath2 in filelist:    #if there is already a file with the same name in the folder..
+                                        testpath2 = testpath1+'-'+str(inc)   #we name the new file with increment
+                                    else:
+                                        filelist.append(testpath2)  #we store the final name of the new file
+                                        break
+                                if testpath2 != testpath1:     #tests if there is a need for increment of the name in the acquisition line
+                                    f.write(acqline+zline+templine+'-'+str(inc-1)+'\n')
+                                    rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine+'-'+str(inc-1)
+                                else:
+                                    f.write(acqline+zline+templine+'\n')   #start acquisition, add z and T to file name if relevant
+                                    rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine
+
+                                # Save rpt files
+                                rptpath = os.path.join(workdir,rptname+".rpt")
+                                with open(rptpath, 'w') as rpt:
+                                    rpt.write('[acquisition]'+'\n')
+                                    rpt.write('filename = '+rptname+'\n')
+                                    rpt.write('transmittedflux = '+str(flux_sample)+'\n')
+                                    rpt.write('thickness = '+str(thick_sample)+'\n')
+                                    rpt.write('time = '+str(time_sample)+'\n')
+                                    rpt.write('wavelength = 0.71'+'\n')
+                                    rpt.write('incidentflux = '+flux_inc+'\n')
+                                    rpt.write('pixel_size = 0.015'+'\n')
+                                rpt.close()
+
+                                
+            if tempreg==True:    #if the temperature regulation has been activated..
+                f.write('\n'+'set_temp 20'+'\n')  #we put back the target temperature at 20°C at the end..
+                f.write('\n'+'power_off'+'\n')    #and shut down the temperature regulation at the end
+            f.write('\n'+'camin'+'\n')        #and we put back the camera to protect the detector
+            f.write('\n')
+        f.close()
 
 window = MainWindow()
 window.show()
