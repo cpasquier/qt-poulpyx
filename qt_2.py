@@ -8,7 +8,8 @@ import numpy as np
 import os
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QSpinBox, QHBoxLayout, QWidget, QTableWidget, \
-    QTableWidgetItem, QCheckBox, QComboBox, QVBoxLayout, QLabel, QTextEdit, QDialogButtonBox, QMessageBox
+    QTableWidgetItem, QCheckBox, QComboBox, QVBoxLayout, QLabel, QTextEdit, QDialogButtonBox, QMessageBox, QTableView
+from PyQt5.QtGui import QKeySequence
 from matplotlib.backends.qt_compat import QtWidgets
 from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
@@ -101,20 +102,20 @@ class MainWindow(QMainWindow):
             table.setCellWidget(1, i, scroll1)
 
         # Temperatures, repetitions and initials
-        repetitions_label = QLabel("Nr. repetitions", self)
-        repetitions_label.setGeometry(20, 130, 85, 60)
+        initials_label = QLabel("Initials", self)
+        initials_label.setGeometry(63, 130, 80, 60)
+        initials_text = QTextEdit(self)
+        initials_text.setGeometry(120,260, 150, 40)
+
+        repetitions_label = QLabel("Nr. repetitions"+'\n'+'(if > 1)', self)
+        repetitions_label.setGeometry(20, 190, 85, 60)
         repetitions_text = QTextEdit(self)
         repetitions_text.setGeometry(120,140, 150, 40)
 
-        temp_label = QLabel("Temperatures", self)
-        temp_label.setGeometry(20, 190, 85, 60)
+        temp_label = QLabel("Temperatures"+'\n'+'(if oven is used)', self)
+        temp_label.setGeometry(20, 250, 95, 60)
         temp_text = QTextEdit(self)
         temp_text.setGeometry(120, 200, 150, 40)
-
-        initials_label = QLabel("Initials", self)
-        initials_label.setGeometry(20, 250, 80, 60)
-        initials_text = QTextEdit(self)
-        initials_text.setGeometry(120,260, 150, 40)
 
     def lineup_clicked(self):
         global scan_scroll, lineup
@@ -214,151 +215,214 @@ class MainWindow(QMainWindow):
             table.setItem(2, i, xval)
             table.setItem(4, i, fval)
 
+    #def keyPressEvent(self, event):
+    #    clipboard = QApplication.clipboard()
+    #    if event.matches(QKeySequence.Copy):
+      #      print('Ctrl + C')
+      #      clipboard.setText("some text")
+      #  if event.matches(QKeySequence.Paste):
+      #      print(clipboard.text())
+      #      print('Ctrl + V')
+      #  QTableView.keyPressEvent(self, event)
+
     def macro_clicked(self):
         global df, column_nb
-        column_nb = table.columnCount()
-        df = pd.DataFrame()
-        for i in range(7):   #[0,1,2,3,4,5,6]:
-            for j in range(column_nb):
-                widget = table.cellWidget(i,j)
-                if isinstance(widget, QComboBox):
-                    cell_value = widget.currentText()
+        ## Checking errors
+        namelist_test = []
+        timelist_test = []
+        err1,err2,err3,err4,err5,err6 = ('','','','','','')
+        iserr=False
+
+        init_test = initials_text.toPlainText()
+        tempe_test = temp_text.toPlainText()
+        for j in range(table.columnCount()):
+            try:
+                namelist_test.append(table.item(0, j).text())
+            except:
+                namelist_test.append('')
+            try:
+                timelist_test.append(table.item(5, j).text())
+            except:
+                timelist_test.append('')
+
+        if '' in namelist_test:
+            err1 = "Sample name missing"+'\n'
+            iserr=True
+        if 0 in timelist_test or '' in timelist_test:
+            err2="Measurement time missing"+'\n'
+            iserr=True
+        if len(namelist_test) != len(set(namelist_test)):
+            err3="Several samples with same name"+'\n'
+            iserr=True
+        if init_test=='':
+            err4="Initials missing"+'\n'
+            iserr=True
+        for a in timelist_test:
+            if a!='':
+                try:
+                    float(a)
+                except ValueError:
+                    err5 = "Error in time entry"+'\n'
+                    iserr = True
+        for b in tempe_test:
+            if b!='':
+                try:
+                    float(b)
+                except ValueError:
+                    err6 = "Error in temperature entry"+'\n'
+                    iserr = True
+        if iserr == True:
+            err_macro = QMessageBox()
+            err_macro.setIcon(QMessageBox.Critical)
+            err_macro.setWindowTitle("Warning")
+            err_macro.setText(err1+err2+err3+err4+err5+err6)
+            err_macro.exec_()
+        else:
+            ## We write the macro if everything is ok
+            column_nb = table.columnCount()
+            df = pd.DataFrame()
+            for i in range(7):   
+                for j in range(column_nb):
+                    widget = table.cellWidget(i,j)
+                    if isinstance(widget, QComboBox):
+                        cell_value = widget.currentText()
+                    else:
+                        try:
+                            cell_value = table.item(i, j).text()
+                        except:
+                            cell_value = "0" 
+                    df.loc[i, j] = cell_value
+                    # [0='Name', 1='Meas. type', 2='x pos.', 3='z pos.', 4='Flux', 5='Measurement time (s)', 6='Thickness (cm)']
+
+            workdir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+
+            temperatures = temp_text.toPlainText()
+            initials = initials_text.toPlainText()
+            repetitions = repetitions_text.toPlainText()
+
+            temp_str_list = temperatures.split(',')  #split des températures
+
+            path1 = str(daydate)+'_'+str(initials)
+            extentlist = ["_macro.mac", "_parameters.csv", "_lupo.txt"]
+            filelist= [f for f in listdir(workdir) if isfile(join(workdir, f))]   ## Note : workdir remplace pfx
+
+            a2 = path1   #incrementation of names of macro, parameters, lupo files if necessary
+            for inc in np.arange(2,1001,1):
+                if any((str(a2)+i) in filelist for i in extentlist):
+                    a2 = path1+'-'+str(inc)
                 else:
-                    try:
-                        cell_value = table.item(i, j).text()
-                    except:
-                        cell_value = "0" 
-                df.loc[i, j] = cell_value
-                # [0='Name', 1='Meas. type', 2='x pos.', 3='z pos.', 4='Flux', 5='Measurement time (s)', 6='Thickness (cm)']
+                    break
 
-        workdir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+            # Create macro
+            ztest = ''
+            temptest = ''
+            heat = False
+            cool = False
+            tempreg = False  #checks if the temperature regulation has been used
+            flux_inc = ''
+            templine = ''
 
-        temperatures = temp_text.toPlainText()
-        initials = initials_text.toPlainText()
-        repetitions = repetitions_text.toPlainText()
+            macropath = os.path.join(workdir,str(a2)+"_macro.mac")    ## Note : macropath remplace runpath
+            parampath =  os.path.join(workdir,str(a2)+"_parameters.csv")
+            lupopath =  os.path.join(workdir,str(a2)+"_lupo.txt")
 
-        temp_str_list = temperatures.split(',')  #split des températures
+            with open(macropath, 'w') as f:
+                f.write('sc'+'\n')
+                f.write('\n')
+                if temp_str_list!='':
+                    for temp_sample in temp_str_list:
+                        if temp_sample!='' and temp_sample!=temptest:  #if temp is the same or if temp field is not filled, we don't write set_temp again
+                            tempreg = True
+                            if 40 >= float(temp_sample) >= 10:    #loops for conditions on turning on/off heating and cooling
+                                if heat==False:
+                                    f.write('heat_on'+'\n')
+                                    heat=True
+                                if cool==False:
+                                    f.write('cool_on'+'\n')
+                                    cool=True
+                            if float(temp_sample) > 40:
+                                if heat==False:
+                                    f.write('heat_on'+'\n')
+                                    heat=True
+                                if cool==True:
+                                    f.write('cool_off'+'\n')
+                                    cool = False
+                            if float(temp_sample) < 10:
+                                if heat==True:
+                                    f.write('heat_off'+'\n')
+                                    heat=False
+                                if cool==False:
+                                    f.write('cool_on'+'\n')
+                                    cool = True
+                            sleep_time = 900     #standard 15 min for equilibration
+                            f.write('set_temp '+str(temp_sample)+'\n')
+                            f.write('sleep('+str(sleep_time)+')'+'\n')
 
-        path1 = str(daydate)+'_'+str(initials)
-        extentlist = ["_macro.mac", "_parameters.csv", "_lupo.txt"]
-        filelist= [f for f in listdir(workdir) if isfile(join(workdir, f))]   ## Note : workdir remplace pfx
+                        templine = '_T'+str(temp_sample)
+                        temptest = temp_sample   
 
-        a2 = path1   #incrementation of names of macro, parameters, lupo files if necessary
-        for inc in np.arange(2,1001,1):
-            if any((str(a2)+i) in filelist for i in extentlist):
-                a2 = path1+'-'+str(inc)
-            else:
-                break
+                        for j in range(column_nb):
+                            type_sample = df.iloc[1,j]
+                            if type_sample == "Air":
+                                flux_inc = df.iloc[4,j]   # Incident flux
+                            else:
+                                name_sample = df.iloc[0,j]
+                                x_sample = df.iloc[2,j]
+                                z_tempor = df.iloc[3,j]  #string
+                                flux_sample = df.iloc[4,j]
+                                time_sample = df.iloc[5,j]
+                                thick_sample = df.iloc[6,j]
+                                z_str_list = z_tempor.split(',')   #split z_temp in a list of strings using comma sep.
 
-        # Create macro
-        ztest = ''
-        temptest = ''
-        heat = False
-        cool = False
-        tempreg = False  #checks if the temperature regulation has been used
-        flux_inc = ''
-        templine = ''
-
-        macropath = os.path.join(workdir,str(a2)+"_macro.mac")    ## Note : macropath remplace runpath
-        parampath =  os.path.join(workdir,str(a2)+"_parameters.csv")
-        lupopath =  os.path.join(workdir,str(a2)+"_lupo.txt")
-
-        with open(macropath, 'w') as f:
-            f.write('sc'+'\n')
-            f.write('\n')
-            if temp_str_list!='':
-                for temp_sample in temp_str_list:
-                    if temp_sample!='' and temp_sample!=temptest:  #if temp is the same or if temp field is not filled, we don't write set_temp again
-                        tempreg = True
-                        if 40 >= float(temp_sample) >= 10:    #loops for conditions on turning on/off heating and cooling
-                            if heat==False:
-                                f.write('heat_on'+'\n')
-                                heat=True
-                            if cool==False:
-                                f.write('cool_on'+'\n')
-                                cool=True
-                        if float(temp_sample) > 40:
-                            if heat==False:
-                                f.write('heat_on'+'\n')
-                                heat=True
-                            if cool==True:
-                                f.write('cool_off'+'\n')
-                                cool = False
-                        if float(temp_sample) < 10:
-                            if heat==True:
-                                f.write('heat_off'+'\n')
-                                heat=False
-                            if cool==False:
-                                f.write('cool_on'+'\n')
-                                cool = True
-                        sleep_time = 900     #standard 15 min for equilibration
-                        f.write('set_temp '+str(temp_sample)+'\n')
-                        f.write('sleep('+str(sleep_time)+')'+'\n')
-
-                    templine = '_T'+str(temp_sample)
-                    temptest = temp_sample   
-
-                    for j in range(column_nb):
-                        type_sample = df.iloc[1,j]
-                        if type_sample == "Air":
-                            flux_inc = df.iloc[4,j]   # Incident flux
-                        else:
-                            name_sample = df.iloc[0,j]
-                            x_sample = df.iloc[2,j]
-                            z_tempor = df.iloc[3,j]  #string
-                            flux_sample = df.iloc[4,j]
-                            time_sample = df.iloc[5,j]
-                            thick_sample = df.iloc[6,j]
-                            z_str_list = z_tempor.split(',')   #split z_temp in a list of strings using comma sep.
-
-                            f.write('umv sax '+str(x_sample)+'\n')   #move to x pos.
-                            for z_sample in z_str_list:
-                                if z_sample != '' and z_sample!= ztest:  #if z is the same or if z-pos field is not filled, we don't write umv saz again
-                                    f.write('umv saz '+str(z_sample)+'\n')
-                                if len(z_str_list) > 1:
-                                    zline ='_z'+str(z_sample)  #puts z value in file name if several
-                                else:
-                                    zline = ''
-                                ztest = z_sample
-
-                                acqline = 'startacq '+str(time_sample)+' '+str(daydate)+'_'+str(initials)+'_'+str(name_sample)
-
-                                testpath1 = workdir+str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine   #for testing if file exists
-                                testpath2 = testpath1
-
-                                for inc in np.arange(2,1001,1):
-                                    if testpath2 in filelist:    #if there is already a file with the same name in the folder..
-                                        testpath2 = testpath1+'-'+str(inc)   #we name the new file with increment
+                                f.write('umv sax '+str(x_sample)+'\n')   #move to x pos.
+                                for z_sample in z_str_list:
+                                    if z_sample != '' and z_sample!= ztest:  #if z is the same or if z-pos field is not filled, we don't write umv saz again
+                                        f.write('umv saz '+str(z_sample)+'\n')
+                                    if len(z_str_list) > 1:
+                                        zline ='_z'+str(z_sample)  #puts z value in file name if several
                                     else:
-                                        filelist.append(testpath2)  #we store the final name of the new file
-                                        break
-                                if testpath2 != testpath1:     #tests if there is a need for increment of the name in the acquisition line
-                                    f.write(acqline+zline+templine+'-'+str(inc-1)+'\n')
-                                    rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine+'-'+str(inc-1)
-                                else:
-                                    f.write(acqline+zline+templine+'\n')   #start acquisition, add z and T to file name if relevant
-                                    rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine
+                                        zline = ''
+                                    ztest = z_sample
 
-                                # Save rpt files
-                                rptpath = os.path.join(workdir,rptname+".rpt")
-                                with open(rptpath, 'w') as rpt:
-                                    rpt.write('[acquisition]'+'\n')
-                                    rpt.write('filename = '+rptname+'\n')
-                                    rpt.write('transmittedflux = '+str(flux_sample)+'\n')
-                                    rpt.write('thickness = '+str(thick_sample)+'\n')
-                                    rpt.write('time = '+str(time_sample)+'\n')
-                                    rpt.write('wavelength = 0.71'+'\n')
-                                    rpt.write('incidentflux = '+flux_inc+'\n')
-                                    rpt.write('pixel_size = 0.015'+'\n')
-                                rpt.close()
+                                    acqline = 'startacq '+str(time_sample)+' '+str(daydate)+'_'+str(initials)+'_'+str(name_sample)
 
-                                
-            if tempreg==True:    #if the temperature regulation has been activated..
-                f.write('\n'+'set_temp 20'+'\n')  #we put back the target temperature at 20°C at the end..
-                f.write('\n'+'power_off'+'\n')    #and shut down the temperature regulation at the end
-            f.write('\n'+'camin'+'\n')        #and we put back the camera to protect the detector
-            f.write('\n')
-        f.close()
+                                    testpath1 = workdir+str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine   #for testing if file exists
+                                    testpath2 = testpath1
+
+                                    for inc in np.arange(2,1001,1):
+                                        if testpath2 in filelist:    #if there is already a file with the same name in the folder..
+                                            testpath2 = testpath1+'-'+str(inc)   #we name the new file with increment
+                                        else:
+                                            filelist.append(testpath2)  #we store the final name of the new file
+                                            break
+                                    if testpath2 != testpath1:     #tests if there is a need for increment of the name in the acquisition line
+                                        f.write(acqline+zline+templine+'-'+str(inc-1)+'\n')
+                                        rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine+'-'+str(inc-1)
+                                    else:
+                                        f.write(acqline+zline+templine+'\n')   #start acquisition, add z and T to file name if relevant
+                                        rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine
+
+                                    # Save rpt files
+                                    rptpath = os.path.join(workdir,rptname+".rpt")
+                                    with open(rptpath, 'w') as rpt:
+                                        rpt.write('[acquisition]'+'\n')
+                                        rpt.write('filename = '+rptname+'\n')
+                                        rpt.write('transmittedflux = '+str(flux_sample)+'\n')
+                                        rpt.write('thickness = '+str(thick_sample)+'\n')
+                                        rpt.write('time = '+str(time_sample)+'\n')
+                                        rpt.write('wavelength = 0.71'+'\n')
+                                        rpt.write('incidentflux = '+flux_inc+'\n')
+                                        rpt.write('pixel_size = 0.015'+'\n')
+                                    rpt.close()
+
+                ######### LE HEAT ON / COOL ON S'ACTIVE MEME A 20°C ???? ######### Ou alors c'est que j'avais mis 20,40 dc actif pr 40, à verifier
+                        
+                if tempreg==True:    #if the temperature regulation has been activated..
+                    f.write('\n'+'set_temp 20'+'\n')  #we put back the target temperature at 20°C at the end..
+                    f.write('\n'+'power_off'+'\n')    #and shut down the temperature regulation at the end
+                f.write('\n'+'camin'+'\n')        #and we put back the camera to protect the detector
+                f.write('\n')
+            f.close()
 
 window = MainWindow()
 window.show()
