@@ -146,6 +146,8 @@ class MainWindow(QMainWindow):
             err_lineup.exec_()
 
     def scan_changed(self):
+        global xpos_list, tr_list, coord        
+        coord = []
         scan_value = scan_scroll.value()
         lineup_file = open(lineup, 'r')
         lineup_lines = lineup_file.readlines()
@@ -195,12 +197,16 @@ class MainWindow(QMainWindow):
         for txt in ax.texts:
             txt.set_visible(False)
 
+        tr_max = max(tr_list)
+        tr_min = min(tr_list)
+
         # Redraw with updated points
+        ax.plot(xpos_list, tr_list, ls='None', marker='o', color='b', ms=4)
         nb = 0
         for ctuple2 in coord:
             nb = nb+1
             ax.plot(ctuple2[0],ctuple2[1], marker='+', color='r', mew=2.0, ms=8)
-            #ax.text(ctuple2[0]-0.4,ctuple2[1]-(tr_max-tr_min)/12, str(nb), color='r', weight='bold')   ### VOIR OU PLACER TEXTE CHIFFRE ####
+            ax.text(ctuple2[0]-0.4,ctuple2[1]-(tr_max-tr_min)/12, str(nb), color='r', weight='bold')   ### VOIR OU PLACER TEXTE CHIFFRE ####
         self.canvas.draw()    #redraw the figure
         #plt.savefig(figpath, bbox_inches='tight',dpi=100)
 
