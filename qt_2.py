@@ -320,7 +320,9 @@ class MainWindow(QMainWindow):
             flux_inc = ''
             templine = ''
 
-            bob=True
+            repetnr=1
+            if repetitions!='':
+                repetnr = int(repetitions)
 
             macropath = os.path.join(workdir,str(a2)+"_macro.mac")
             parampath =  os.path.join(workdir,str(a2)+"_parameters.csv")
@@ -393,36 +395,38 @@ class MainWindow(QMainWindow):
                                     zline = ''
                                 ztest = z_sample
 
-                                acqline = 'startacq '+str(time_sample)+' '+str(daydate)+'_'+str(initials)+'_'+str(name_sample)
+                                for r in range(repetnr):
 
-                                testpath1 = workdir+str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine   #for testing if file exists
-                                testpath2 = testpath1
+                                    acqline = 'startacq '+str(time_sample)+' '+str(daydate)+'_'+str(initials)+'_'+str(name_sample)
 
-                                for inc in np.arange(2,1001,1):
-                                    if testpath2 in filelist:    #if there is already a file with the same name in the folder..
-                                        testpath2 = testpath1+'-'+str(inc)   #we name the new file with increment
+                                    testpath1 = workdir+str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine   #for testing if file exists
+                                    testpath2 = testpath1
+
+                                    for inc in np.arange(2,1001,1):
+                                        if testpath2 in filelist:    #if there is already a file with the same name in the folder..
+                                            testpath2 = testpath1+'-'+str(inc)   #we name the new file with increment
+                                        else:
+                                            filelist.append(testpath2)  #we store the final name of the new file
+                                            break
+                                    if testpath2 != testpath1:     #tests if there is a need for increment of the name in the acquisition line
+                                        f.write(acqline+zline+templine+'-'+str(inc-1)+'\n')
+                                        rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine+'-'+str(inc-1)
                                     else:
-                                        filelist.append(testpath2)  #we store the final name of the new file
-                                        break
-                                if testpath2 != testpath1:     #tests if there is a need for increment of the name in the acquisition line
-                                    f.write(acqline+zline+templine+'-'+str(inc-1)+'\n')
-                                    rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine+'-'+str(inc-1)
-                                else:
-                                    f.write(acqline+zline+templine+'\n')   #start acquisition, add z and T to file name if relevant
-                                    rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine
+                                        f.write(acqline+zline+templine+'\n')   #start acquisition, add z and T to file name if relevant
+                                        rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine
 
-                                # Save rpt files
-                                rptpath = os.path.join(workdir,rptname+".rpt")
-                                with open(rptpath, 'w') as rpt:
-                                    rpt.write('[acquisition]'+'\n')
-                                    rpt.write('filename = '+rptname+'\n')
-                                    rpt.write('transmittedflux = '+str(flux_sample)+'\n')
-                                    rpt.write('thickness = '+str(thick_sample)+'\n')
-                                    rpt.write('time = '+str(time_sample)+'\n')
-                                    rpt.write('wavelength = 0.71'+'\n')
-                                    rpt.write('incidentflux = '+flux_inc+'\n')
-                                    rpt.write('pixel_size = 0.015'+'\n')
-                                rpt.close()
+                                    # Save rpt files
+                                    rptpath = os.path.join(workdir,rptname+".rpt")
+                                    with open(rptpath, 'w') as rpt:
+                                        rpt.write('[acquisition]'+'\n')
+                                        rpt.write('filename = '+rptname+'\n')
+                                        rpt.write('transmittedflux = '+str(flux_sample)+'\n')
+                                        rpt.write('thickness = '+str(thick_sample)+'\n')
+                                        rpt.write('time = '+str(time_sample)+'\n')
+                                        rpt.write('wavelength = 0.71'+'\n')
+                                        rpt.write('incidentflux = '+flux_inc+'\n')
+                                        rpt.write('pixel_size = 0.015'+'\n')
+                                    rpt.close()
                         
                 if tempreg==True:    #if the temperature regulation has been activated..
                     f.write('\n'+'set_temp 20'+'\n')  #we put back the target temperature at 20°C at the end..
