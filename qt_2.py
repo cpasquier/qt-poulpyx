@@ -1,5 +1,4 @@
 import sys
-import time
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Cursor
@@ -7,13 +6,10 @@ matplotlib.use('Qt5Agg')
 import numpy as np
 import os
 import csv
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QSize
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QSpinBox, QHBoxLayout, QWidget, QTableWidget, \
-    QTableWidgetItem, QCheckBox, QComboBox, QVBoxLayout, QLabel, QTextEdit, QDialogButtonBox, QMessageBox, QTableView
-from PyQt5.QtGui import QKeySequence
-from matplotlib.backends.qt_compat import QtWidgets
+    QTableWidgetItem, QComboBox, QVBoxLayout, QLabel, QTextEdit, QDialogButtonBox, QMessageBox, QTableView
 from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
-from matplotlib.figure import Figure
 import pandas as pd
 from datetime import date
 from os import listdir
@@ -27,7 +23,7 @@ class MainWindow(QMainWindow):
         global Hwidget1, Hbox1, scan_scroll, scan_scroll, ax, coord, table, nbcol, daydate, initials_text, temp_text, repetitions_text
         super().__init__()
         self.setWindowTitle("PoulPyX")
-        self.setFixedSize(QSize(1600,900))   #### TO CHANGE LATER ACCORDING TO SCREEN 
+        self.setFixedSize(QSize(1600,900))   #### TO CHANGE LATER ACCORDING TO SCREEN
         
         # Get the date of the day for file numbering
         today = date.today()
@@ -55,7 +51,7 @@ class MainWindow(QMainWindow):
         Hbox1 = QHBoxLayout(Hwidget1)
         Hbox1.setContentsMargins(0, 0, 0, 0)
 
-        # Lineup selection buttons 
+        # Lineup selection buttons
         lineup_button = QPushButton("Select lineup file", Hwidget1)    # select the lineup file
         Hbox1.addWidget(lineup_button)
         lineup_button.setGeometry(200, 150, 150, 50)
@@ -66,7 +62,7 @@ class MainWindow(QMainWindow):
         scan_scroll.setMaximum(0)
         Hbox1.addWidget(scan_scroll)
 
-        lineup_button.clicked.connect(self.lineup_clicked)   # Opens the file selction window when button clicked 
+        lineup_button.clicked.connect(self.lineup_clicked)   # Opens the file selction window when button clicked
         scan_scroll.valueChanged.connect(self.scan_changed)  # Creates a signal of scan change to change the transmission figure
 
         # Cursor for the figure / clickable
