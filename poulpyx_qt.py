@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
         global Hwidget1, Hbox1, scan_scroll, scan_scroll, ax, coord, table, nbcol, daydate, initials_text, temp_text, repetitions_text
         super().__init__()
         self.setWindowTitle("PoulPyX")
-        self.setFixedSize(QSize(1600,900))   #### TO CHANGE LATER ACCORDING TO SCREEN
+        self.setFixedSize(QSize(1680,950))   #### TO CHANGE LATER ACCORDING TO SCREEN
         
         # Get the date of the day for file numbering
         today = date.today()
@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
 
         # Figure
         Hwidget4 = QWidget(self)
-        Hwidget4.setGeometry(10, 320, 1361, 580)
+        Hwidget4.setGeometry(20,330,1470,610)
         Hbox4 = QVBoxLayout(Hwidget4)
         Hbox4.setContentsMargins(0, 0, 0, 0)
 
@@ -47,14 +47,14 @@ class MainWindow(QMainWindow):
 
         # Create horizontal box for lineup selection button and scan selection
         Hwidget1 = QWidget(self)
-        Hwidget1.setGeometry(20, 20, 261, 80)
+        Hwidget1.setGeometry(20,20,260,80)
         Hbox1 = QHBoxLayout(Hwidget1)
         Hbox1.setContentsMargins(0, 0, 0, 0)
 
         # Lineup selection buttons
         lineup_button = QPushButton("Select lineup file", Hwidget1)    # select the lineup file
         Hbox1.addWidget(lineup_button)
-        lineup_button.setGeometry(200, 150, 150, 50)
+        lineup_button.setGeometry(1,25,125,30)
 
         # Scan selection scroll
         scan_scroll = QSpinBox(Hwidget1)    # choose scan number
@@ -70,12 +70,12 @@ class MainWindow(QMainWindow):
 
         # Button to refresh the table, button ok, button cancel
         Vwidget1 = QWidget(self)
-        Vwidget1.setGeometry(1410, 790, 160, 91)
+        Vwidget1.setGeometry(1505,780,160,90)
         Vbox1 = QVBoxLayout(Vwidget1)
         Vbox1.setContentsMargins(0, 0, 0, 0)
 
         update_button = QPushButton("Update table",self)
-        update_button.setGeometry(1400, 370, 158, 28)
+        update_button.setGeometry(1505,350,160,30)
         update_button.clicked.connect(self.update_clicked)
 
         macro_button = QPushButton("Generate macro",Vwidget1)
@@ -84,13 +84,15 @@ class MainWindow(QMainWindow):
         cancel_button = QPushButton("Cancel",Vwidget1)
         Vbox1.addWidget(cancel_button)
         cancel_button.clicked.connect(self.cancel_clicked)
+        update_button.setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(116, 222, 162, 255), stop:1 rgba(181,222,116, 255))")
+        macro_button.setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(236,227,120, 255), stop:1 rgba(236,201,120,255))")
 
         # Table
-        nbcol = 0
+        nbcol = 1
         table = QTableWidget(self)
         table.setRowCount(7)
         table.setColumnCount(nbcol)
-        table.setGeometry(300, 20, 1281, 284)
+        table.setGeometry(300,20,1360,285)
         table.setVerticalHeaderLabels(['Name', 'Meas. type', 'x pos.', 'z pos.', 'Flux', 'Measurement time (s)', 'Thickness (cm)'])
         for i in range(nbcol):
             scroll1 = QComboBox()   # Scroll for "sample/air/lupo"
@@ -99,19 +101,19 @@ class MainWindow(QMainWindow):
 
         # Temperatures, repetitions and initials
         initials_label = QLabel("Initials", self)
-        initials_label.setGeometry(63, 130, 80, 60)
+        initials_label.setGeometry(65,100,80,60)
         initials_text = QTextEdit(self)
-        initials_text.setGeometry(120,140, 150, 40)
+        initials_text.setGeometry(130,110,150,40)
 
         repetitions_label = QLabel("Nr. repetitions"+'\n'+'(if > 1)', self)
-        repetitions_label.setGeometry(20, 190, 85, 60)
+        repetitions_label.setGeometry(25,170,95,60)
         repetitions_text = QTextEdit(self)
-        repetitions_text.setGeometry(120,200, 150, 40)
+        repetitions_text.setGeometry(130,180,150,40)
 
         temp_label = QLabel("Temperatures"+'\n'+'(if oven is used)', self)
-        temp_label.setGeometry(20, 250, 95, 60)
+        temp_label.setGeometry(23,240,100,60)
         temp_text = QTextEdit(self)
-        temp_text.setGeometry(120, 260, 150, 40)
+        temp_text.setGeometry(130,250,150,40)
 
     def lineup_clicked(self):
         global scan_scroll, lineup
