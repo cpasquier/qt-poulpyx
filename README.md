@@ -1,3 +1,3 @@
 # qt-poulpyx
 
-PyQT version of PoulPyX - under development
+PyQT version of PoulPyX
