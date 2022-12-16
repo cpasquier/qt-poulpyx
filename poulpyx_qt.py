@@ -228,23 +228,24 @@ class MainWindow(QMainWindow):
         timelist_test = []
         err1,err2,err3,err4,err5,err6 = ('','','','','','')
         iserr=False
-
         init_test = initials_text.toPlainText()
         tempe_test = temp_text.toPlainText()
+        tempe_test_list = tempe_test.split(',') 
         for j in range(table.columnCount()):
-            try:
-                namelist_test.append(table.item(0, j).text())
-            except:
-                namelist_test.append('')
-            try:
-                timelist_test.append(table.item(5, j).text())
-            except:
-                timelist_test.append('')
-
+            type_sample_test =  table.cellWidget(1,j).currentText()
+            if type_sample_test!='Air':
+                try:
+                    namelist_test.append(table.item(0, j).text())
+                except:
+                    namelist_test.append('')
+                try:
+                    timelist_test.append(table.item(5, j).text())
+                except:
+                    timelist_test.append('')
         if '' in namelist_test:
             err1 = "Sample name missing"+'\n'
             iserr=True
-        if 0 in timelist_test or '' in timelist_test:
+        if (0 in timelist_test) or ('' in timelist_test):
             err2="Measurement time missing"+'\n'
             iserr=True
         if len(namelist_test) != len(set(namelist_test)):
@@ -260,7 +261,7 @@ class MainWindow(QMainWindow):
                 except ValueError:
                     err5 = "Error in time entry"+'\n'
                     iserr = True
-        for b in tempe_test:
+        for b in tempe_test_list:
             if b!='':
                 try:
                     float(b)
@@ -291,149 +292,150 @@ class MainWindow(QMainWindow):
                     # [0='Name', 1='Meas. type', 2='x pos.', 3='z pos.', 4='Flux', 5='Measurement time (s)', 6='Thickness (cm)']
 
             workdir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+            if workdir:
 
-            temperatures = temp_text.toPlainText()
-            initials = initials_text.toPlainText()
-            repetitions = repetitions_text.toPlainText()
+                temperatures = temp_text.toPlainText()
+                initials = initials_text.toPlainText()
+                repetitions = repetitions_text.toPlainText()
 
-            temp_str_list = temperatures.split(',')  #split of temperatures
+                temp_str_list = temperatures.split(',')  #split of temperatures
 
-            path1 = str(daydate)+'_'+str(initials)
-            extentlist = ["_macro.mac", "_parameters.csv", "_lupo.txt"]
-            filelist= [f for f in listdir(workdir) if isfile(join(workdir, f))]
+                path1 = str(daydate)+'_'+str(initials)
+                extentlist = ["_macro.mac", "_parameters.csv", "_lupo.txt"]
+                filelist= [f for f in listdir(workdir) if isfile(join(workdir, f))]
 
-            a2 = path1   #incrementation of names of macro, parameters, lupo files if necessary
-            for inc in np.arange(2,1001,1):
-                if any((str(a2)+i) in filelist for i in extentlist):
-                    a2 = path1+'-'+str(inc)
-                else:
-                    break
-
-            # Create macro
-            ztest = ''
-            temptest = ''
-            heat = False
-            cool = False
-            tempreg = False  #checks if the temperature regulation has been used
-            flux_inc = ''
-            templine = ''
-
-            repetnr=1
-            if repetitions!='':
-                repetnr = int(repetitions)
-
-            macropath = os.path.join(workdir,str(a2)+"_macro.mac")
-            parampath =  os.path.join(workdir,str(a2)+"_parameters.csv")
-            lupopath =  os.path.join(workdir,str(a2)+"_lupo.txt")
-
-            with open(macropath, 'w') as f, open(parampath, 'w', encoding='UTF8') as h, open(lupopath, 'w') as p:
-                writer = csv.writer(h)
-                header = ['Name', 'Meas. type', 'x pos.', 'z pos.', 'Flux', 'Measurement time (s)', 'Thickness (cm)']
-                writer.writerow(header)
-                f.write('sc'+'\n')
-                f.write('\n')
-                p.write('Type'+'\t'+'Flux'+'\t'+'Time (s)'+'\n')
-                for temp_sample in temp_str_list:
-                    if temp_sample!='' and temp_sample!=temptest:  #if temp is the same or if temp field is not filled, we don't write set_temp again
-                        tempreg = True
-                        if 40 >= float(temp_sample) >= 10:    #loops for conditions on turning on/off heating and cooling
-                            if heat==False:
-                                f.write('heat_on'+'\n')
-                                heat=True
-                            if cool==False:
-                                f.write('cool_on'+'\n')
-                                cool=True
-                        if float(temp_sample) > 40:
-                            if heat==False:
-                                f.write('heat_on'+'\n')
-                                heat=True
-                            if cool==True:
-                                f.write('cool_off'+'\n')
-                                cool = False
-                        if float(temp_sample) < 10:
-                            if heat==True:
-                                f.write('heat_off'+'\n')
-                                heat=False
-                            if cool==False:
-                                f.write('cool_on'+'\n')
-                                cool = True
-                        sleep_time = 900     #standard 15 min for equilibration
-                        f.write('set_temp '+str(temp_sample)+'\n')
-                        f.write('sleep('+str(sleep_time)+')'+'\n')
-
-                        templine = '_T'+str(temp_sample)
-                        temptest = temp_sample
+                a2 = path1   #incrementation of names of macro, parameters, lupo files if necessary
+                for inc in np.arange(2,1001,1):
+                    if any((str(a2)+i) in filelist for i in extentlist):
+                        a2 = path1+'-'+str(inc)
                     else:
-                        templine=''
-                        temptest = temp_sample
+                        break
 
-                    for j in range(column_nb):
-                        type_sample = df.iloc[1,j]
-                        if type_sample == "Air":
-                            flux_inc = df.iloc[4,j]   #incident flux
-                            p.write(type_sample+'\t'+flux_inc+'\n')  #for lupo file
+                # Create macro
+                ztest = ''
+                temptest = ''
+                heat = False
+                cool = False
+                tempreg = False  #checks if the temperature regulation has been used
+                flux_inc = ''
+                templine = ''
+
+                repetnr=1
+                if repetitions!='':
+                    repetnr = int(repetitions)
+
+                macropath = os.path.join(workdir,str(a2)+"_macro.mac")
+                parampath =  os.path.join(workdir,str(a2)+"_parameters.csv")
+                lupopath =  os.path.join(workdir,str(a2)+"_lupo.txt")
+
+                with open(macropath, 'w') as f, open(parampath, 'w', encoding='UTF8') as h, open(lupopath, 'w') as p:
+                    writer = csv.writer(h)
+                    header = ['Name', 'Meas. type', 'x pos.', 'z pos.', 'Flux', 'Measurement time (s)', 'Thickness (cm)']
+                    writer.writerow(header)
+                    f.write('sc'+'\n')
+                    f.write('\n')
+                    p.write('Type'+'\t'+'Flux'+'\t'+'Time (s)'+'\n')
+                    for temp_sample in temp_str_list:
+                        if temp_sample!='' and temp_sample!=temptest:  #if temp is the same or if temp field is not filled, we don't write set_temp again
+                            tempreg = True
+                            if 40 >= float(temp_sample) >= 10:    #loops for conditions on turning on/off heating and cooling
+                                if heat==False:
+                                    f.write('heat_on'+'\n')
+                                    heat=True
+                                if cool==False:
+                                    f.write('cool_on'+'\n')
+                                    cool=True
+                            if float(temp_sample) > 40:
+                                if heat==False:
+                                    f.write('heat_on'+'\n')
+                                    heat=True
+                                if cool==True:
+                                    f.write('cool_off'+'\n')
+                                    cool = False
+                            if float(temp_sample) < 10:
+                                if heat==True:
+                                    f.write('heat_off'+'\n')
+                                    heat=False
+                                if cool==False:
+                                    f.write('cool_on'+'\n')
+                                    cool = True
+                            sleep_time = 900     #standard 15 min for equilibration
+                            f.write('set_temp '+str(temp_sample)+'\n')
+                            f.write('sleep('+str(sleep_time)+')'+'\n')
+
+                            templine = '_T'+str(temp_sample)
+                            temptest = temp_sample
                         else:
-                            name_sample = df.iloc[0,j]
-                            x_sample = df.iloc[2,j]
-                            z_tempor = df.iloc[3,j]  #string
-                            flux_sample = df.iloc[4,j]
-                            time_sample = df.iloc[5,j]
-                            thick_sample = df.iloc[6,j]
-                            z_str_list = z_tempor.split(',')   #split z_temp in a list of strings using comma sep.
-                            writer.writerow([name_sample,type_sample,x_sample,z_tempor,flux_sample,time_sample,thick_sample])   #for csv
-                            if type_sample == "Lupo/PE":
-                                p.write(type_sample+'\t'+flux_sample+'\t'+time_sample+'\n')   #for lupo file
-                            f.write('umv sax '+str(x_sample)+'\n')   #move to x pos.
-                            for z_sample in z_str_list:
-                                if z_sample != '' and z_sample!= ztest:  #if z is the same or if z-pos field is not filled, we don't write umv saz again
-                                    f.write('umv saz '+str(z_sample)+'\n')
-                                if len(z_str_list) > 1:
-                                    zline ='_z'+str(z_sample)  #puts z value in file name if several
-                                else:
-                                    zline = ''
-                                ztest = z_sample
+                            templine=''
+                            temptest = temp_sample
 
-                                for r in range(repetnr):
-
-                                    acqline = 'startacq '+str(time_sample)+' '+str(daydate)+'_'+str(initials)+'_'+str(name_sample)
-
-                                    testpath1 = workdir+str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine   #for testing if file exists
-                                    testpath2 = testpath1
-
-                                    for inc in np.arange(2,1001,1):
-                                        if testpath2 in filelist:    #if there is already a file with the same name in the folder..
-                                            testpath2 = testpath1+'-'+str(inc)   #we name the new file with increment
-                                        else:
-                                            filelist.append(testpath2)  #we store the final name of the new file
-                                            break
-                                    if testpath2 != testpath1:     #tests if there is a need for increment of the name in the acquisition line
-                                        f.write(acqline+zline+templine+'-'+str(inc-1)+'\n')
-                                        rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine+'-'+str(inc-1)
+                        for j in range(column_nb):
+                            type_sample = df.iloc[1,j]
+                            if type_sample == "Air":
+                                flux_inc = df.iloc[4,j]   #incident flux
+                                p.write(type_sample+'\t'+flux_inc+'\n')  #for lupo file
+                            else:
+                                name_sample = df.iloc[0,j]
+                                x_sample = df.iloc[2,j]
+                                z_tempor = df.iloc[3,j]  #string
+                                flux_sample = df.iloc[4,j]
+                                time_sample = df.iloc[5,j]
+                                thick_sample = df.iloc[6,j]
+                                z_str_list = z_tempor.split(',')   #split z_temp in a list of strings using comma sep.
+                                writer.writerow([name_sample,type_sample,x_sample,z_tempor,flux_sample,time_sample,thick_sample])   #for csv
+                                if type_sample == "Lupo/PE":
+                                    p.write(type_sample+'\t'+flux_sample+'\t'+time_sample+'\n')   #for lupo file
+                                f.write('umv sax '+str(x_sample)+'\n')   #move to x pos.
+                                for z_sample in z_str_list:
+                                    if z_sample != '' and z_sample!= ztest:  #if z is the same or if z-pos field is not filled, we don't write umv saz again
+                                        f.write('umv saz '+str(z_sample)+'\n')
+                                    if len(z_str_list) > 1:
+                                        zline ='_z'+str(z_sample)  #puts z value in file name if several
                                     else:
-                                        f.write(acqline+zline+templine+'\n')   #start acquisition, add z and T to file name if relevant
-                                        rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine
+                                        zline = ''
+                                    ztest = z_sample
 
-                                    # Save rpt files
-                                    rptpath = os.path.join(workdir,rptname+".rpt")
-                                    with open(rptpath, 'w') as rpt:
-                                        rpt.write('[acquisition]'+'\n')
-                                        rpt.write('filename = '+rptname+'\n')
-                                        rpt.write('transmittedflux = '+str(flux_sample)+'\n')
-                                        rpt.write('thickness = '+str(thick_sample)+'\n')
-                                        rpt.write('time = '+str(time_sample)+'\n')
-                                        rpt.write('wavelength = 0.71'+'\n')
-                                        rpt.write('incidentflux = '+flux_inc+'\n')
-                                        rpt.write('pixel_size = 0.015'+'\n')
-                                    rpt.close()
-                        
-                if tempreg==True:    #if the temperature regulation has been activated..
-                    f.write('\n'+'set_temp 20'+'\n')  #we put back the target temperature at 20°C at the end..
-                    f.write('\n'+'power_off'+'\n')    #and shut down the temperature regulation at the end
-                f.write('\n'+'sc'+'\n')        #close shutter
-                f.write('\n')
-            f.close()
-            h.close()
-            p.close()
+                                    for r in range(repetnr):
+
+                                        acqline = 'startacq '+str(time_sample)+' '+str(daydate)+'_'+str(initials)+'_'+str(name_sample)
+
+                                        testpath1 = workdir+str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine   #for testing if file exists
+                                        testpath2 = testpath1
+
+                                        for inc in np.arange(2,1001,1):
+                                            if testpath2 in filelist:    #if there is already a file with the same name in the folder..
+                                                testpath2 = testpath1+'-'+str(inc)   #we name the new file with increment
+                                            else:
+                                                filelist.append(testpath2)  #we store the final name of the new file
+                                                break
+                                        if testpath2 != testpath1:     #tests if there is a need for increment of the name in the acquisition line
+                                            f.write(acqline+zline+templine+'-'+str(inc-1)+'\n')
+                                            rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine+'-'+str(inc-1)
+                                        else:
+                                            f.write(acqline+zline+templine+'\n')   #start acquisition, add z and T to file name if relevant
+                                            rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine
+
+                                        # Save rpt files
+                                        rptpath = os.path.join(workdir,rptname+".rpt")
+                                        with open(rptpath, 'w') as rpt:
+                                            rpt.write('[acquisition]'+'\n')
+                                            rpt.write('filename = '+rptname+'\n')
+                                            rpt.write('transmittedflux = '+str(flux_sample)+'\n')
+                                            rpt.write('thickness = '+str(thick_sample)+'\n')
+                                            rpt.write('time = '+str(time_sample)+'\n')
+                                            rpt.write('wavelength = 0.71'+'\n')
+                                            rpt.write('incidentflux = '+flux_inc+'\n')
+                                            rpt.write('pixel_size = 0.015'+'\n')
+                                        rpt.close()
+                            
+                    if tempreg==True:     #if the temperature regulation has been activated..
+                        f.write('\n'+'set_temp 20'+'\n')  #we put back the target temperature at 20°C at the end..
+                        f.write('\n'+'power_off'+'\n')    #and shut down the temperature regulation at the end
+                    f.write('\n'+'sc'+'\n')       #close shutter
+                    f.write('\n')
+                f.close()
+                h.close()
+                p.close()
 
 window = MainWindow()
 window.show()
