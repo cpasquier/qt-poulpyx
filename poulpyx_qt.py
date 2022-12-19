@@ -328,13 +328,12 @@ class MainWindow(QMainWindow):
                 parampath =  os.path.join(workdir,str(a2)+"_parameters.csv")
                 lupopath =  os.path.join(workdir,str(a2)+"_lupo.txt")
 
-                with open(macropath, 'w') as f, open(parampath, 'w', encoding='UTF8') as h, open(lupopath, 'w') as p:
+                with open(macropath, 'w') as f, open(parampath, 'w', encoding='UTF8') as h:
                     writer = csv.writer(h)
                     header = ['Name', 'Meas. type', 'x pos.', 'z pos.', 'Flux', 'Measurement time (s)', 'Thickness (cm)']
                     writer.writerow(header)
                     f.write('sc'+'\n')
                     f.write('\n')
-                    p.write('Type'+'\t'+'Flux'+'\t'+'Time (s)'+'\n')
                     for temp_sample in temp_str_list:
                         if temp_sample!='' and temp_sample!=temptest:  #if temp is the same or if temp field is not filled, we don't write set_temp again
                             tempreg = True
@@ -362,7 +361,6 @@ class MainWindow(QMainWindow):
                             sleep_time = 900     #standard 15 min for equilibration
                             f.write('set_temp '+str(temp_sample)+'\n')
                             f.write('sleep('+str(sleep_time)+')'+'\n')
-
                             templine = '_T'+str(temp_sample)
                             temptest = temp_sample
                         else:
@@ -373,7 +371,6 @@ class MainWindow(QMainWindow):
                             type_sample = df.iloc[1,j]
                             if type_sample == "Air":
                                 flux_inc = df.iloc[4,j]   #incident flux
-                                p.write(type_sample+'\t'+flux_inc+'\n')  #for lupo file
                             else:
                                 name_sample = df.iloc[0,j]
                                 x_sample = df.iloc[2,j]
@@ -383,8 +380,6 @@ class MainWindow(QMainWindow):
                                 thick_sample = df.iloc[6,j]
                                 z_str_list = z_tempor.split(',')   #split z_temp in a list of strings using comma sep.
                                 writer.writerow([name_sample,type_sample,x_sample,z_tempor,flux_sample,time_sample,thick_sample])   #for csv
-                                if type_sample == "Lupo/PE":
-                                    p.write(type_sample+'\t'+flux_sample+'\t'+time_sample+'\n')   #for lupo file
                                 f.write('umv sax '+str(x_sample)+'\n')   #move to x pos.
                                 for z_sample in z_str_list:
                                     if z_sample != '' and z_sample!= ztest:  #if z is the same or if z-pos field is not filled, we don't write umv saz again
@@ -396,12 +391,9 @@ class MainWindow(QMainWindow):
                                     ztest = z_sample
 
                                     for r in range(repetnr):
-
                                         acqline = 'startacq '+str(time_sample)+' '+str(daydate)+'_'+str(initials)+'_'+str(name_sample)
-
                                         testpath1 = workdir+str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine   #for testing if file exists
                                         testpath2 = testpath1
-
                                         for inc in np.arange(2,1001,1):
                                             if testpath2 in filelist:    #if there is already a file with the same name in the folder..
                                                 testpath2 = testpath1+'-'+str(inc)   #we name the new file with increment
@@ -414,7 +406,6 @@ class MainWindow(QMainWindow):
                                         else:
                                             f.write(acqline+zline+templine+'\n')   #start acquisition, add z and T to file name if relevant
                                             rptname = str(daydate)+'_'+str(initials)+'_'+str(name_sample)+zline+templine
-
                                         # Save rpt files
                                         rptpath = os.path.join(workdir,rptname+".rpt")
                                         with open(rptpath, 'w') as rpt:
@@ -427,7 +418,6 @@ class MainWindow(QMainWindow):
                                             rpt.write('incidentflux = '+flux_inc+'\n')
                                             rpt.write('pixel_size = 0.015'+'\n')
                                         rpt.close()
-                            
                     if tempreg==True:     #if the temperature regulation has been activated..
                         f.write('\n'+'set_temp 20'+'\n')  #we put back the target temperature at 20°C at the end..
                         f.write('\n'+'power_off'+'\n')    #and shut down the temperature regulation at the end
@@ -435,7 +425,6 @@ class MainWindow(QMainWindow):
                     f.write('\n')
                 f.close()
                 h.close()
-                p.close()
 
 window = MainWindow()
 window.show()
