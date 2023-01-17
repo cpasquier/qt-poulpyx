@@ -6,11 +6,12 @@ matplotlib.use('Qt5Agg')
 import numpy as np
 import os
 import csv
-from PyQt5.QtCore import QSize
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QSpinBox, QHBoxLayout, QWidget, QTableWidget, \
-    QTableWidgetItem, QComboBox, QVBoxLayout, QLabel, QTextEdit, QDialogButtonBox, QMessageBox, QTableView
-from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 import pandas as pd
+from PyQt5.QtCore import QSize,QRegExp
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QSpinBox, QHBoxLayout, QWidget, QTableWidget, \
+    QTableWidgetItem, QComboBox, QVBoxLayout, QLabel, QTextEdit, QDialogButtonBox, QMessageBox, QTableView, QLineEdit
+from PyQt5.QtGui import QRegExpValidator
+from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from datetime import date
 from os import listdir
 from os.path import isfile, join
@@ -23,8 +24,15 @@ class MainWindow(QMainWindow):
         global Hwidget1, Hbox1, scan_scroll, scan_scroll, ax, coord, table, nbcol, daydate, initials_text, temp_text, repetitions_text
         super().__init__()
         self.setWindowTitle("PoulPyX")
-        self.setFixedSize(QSize(1680,950))   #### TO CHANGE LATER ACCORDING TO SCREEN
-        
+        self.setFixedSize(QSize(1680,950))
+
+        rx1 = QRegExp("^[A-Za-z]+")    # Allows only attached letters in initials (no space, comma, number, tab...)
+        rx2 = QRegExp("^[0-9]+")       # Allows only attached numbers in repetitions
+        rx3 = QRegExp("^[0-9,.]+")      # Allows only attached numbers, dots and commas in temperatures
+        Validator1 = QRegExpValidator(rx1, self)
+        Validator2 = QRegExpValidator(rx2, self)
+        Validator3 = QRegExpValidator(rx3, self)
+
         # Get the date of the day for file numbering
         today = date.today()
         daydate = today.strftime("%y%m%d")
@@ -102,22 +110,28 @@ class MainWindow(QMainWindow):
         # Temperatures, repetitions and initials
         initials_label = QLabel("Initials", self)
         initials_label.setGeometry(65,100,80,60)
-        initials_text = QTextEdit(self)
+        initials_text = QLineEdit(self)
         initials_text.setGeometry(130,110,150,40)
+        initials_text.setValidator(Validator1)
 
         repetitions_label = QLabel("Nr. repetitions"+'\n'+'(if > 1)', self)
         repetitions_label.setGeometry(25,170,95,60)
-        repetitions_text = QTextEdit(self)
+        repetitions_text = QLineEdit(self)
         repetitions_text.setGeometry(130,180,150,40)
+        repetitions_text.setValidator(Validator2)
 
         temp_label = QLabel("Temperatures"+'\n'+'(if oven is used)', self)
         temp_label.setGeometry(23,240,100,60)
-        temp_text = QTextEdit(self)
+        temp_text = QLineEdit(self)
         temp_text.setGeometry(130,250,150,40)
+        temp_text.setValidator(Validator3)
 
     def lineup_clicked(self):
         global scan_scroll, lineup
-        lineup_sel = QFileDialog.getOpenFileName()
+        if os.path.isdir('/home/mar345/data/LineUp'):
+            lineup_sel = QFileDialog.getOpenFileName('/home/mar345/data/LineUp')   # if on SAXS bench computer, sets default lineup folder
+        else:
+            lineup_sel = QFileDialog.getOpenFileName()
         lineup = lineup_sel[0]
         if "_lineup" in lineup:
             lineup_file = open(lineup, 'r')
@@ -155,7 +169,7 @@ class MainWindow(QMainWindow):
         i=-1
         for line in lineup_lines:    # we get the number of scans
             i=i+1
-            if ("#S "+str(scan_value)) in line:
+            if ("#S "+str(scan_value)+'  ascan') in line:
                 a = line.split()
                 b = a[6]             #counts the number of theoretically measured points (input for ascan)
                 for j in np.arange(i+14, i+14+int(b)+1, 1):
@@ -165,7 +179,6 @@ class MainWindow(QMainWindow):
                         c = lineup_lines[j].split()
                         xpos_list.append(float(c[0]))
                         tr_list.append(float(c[9]))
-
         ax.clear()
         ax.plot(xpos_list, tr_list, ls='-', marker='o', color='mediumblue', ms=4)
         self.cursor = Cursor(ax, horizOn=True, vertOn=True, useblit=True, color = 'r', linewidth = 1)
@@ -228,8 +241,8 @@ class MainWindow(QMainWindow):
         timelist_test = []
         err1,err2,err3,err4,err5,err6 = ('','','','','','')
         iserr=False
-        init_test = initials_text.toPlainText()
-        tempe_test = temp_text.toPlainText()
+        init_test = initials_text.text()
+        tempe_test = temp_text.text()
         tempe_test_list = tempe_test.split(',') 
         for j in range(table.columnCount()):
             type_sample_test =  table.cellWidget(1,j).currentText()
@@ -294,9 +307,9 @@ class MainWindow(QMainWindow):
             workdir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
             if workdir:
 
-                temperatures = temp_text.toPlainText()
-                initials = initials_text.toPlainText()
-                repetitions = repetitions_text.toPlainText()
+                temperatures = temp_text.text()
+                initials = initials_text.text()
+                repetitions = repetitions_text.text()
 
                 temp_str_list = temperatures.split(',')  #split of temperatures
 
@@ -317,7 +330,8 @@ class MainWindow(QMainWindow):
                 heat = False
                 cool = False
                 tempreg = False  #checks if the temperature regulation has been used
-                flux_inc = ''
+                flux_inc = 0
+                flux_nr = 0
                 templine = ''
 
                 repetnr=1
@@ -370,8 +384,12 @@ class MainWindow(QMainWindow):
                         for j in range(column_nb):
                             type_sample = df.iloc[1,j]
                             if type_sample == "Air":
-                                flux_inc = df.iloc[4,j]   #incident flux
-                            else:
+                                flux_inc = flux_inc + float(df.iloc[4,j])   # sum of incident flux for later averaging
+                                flux_nr = flux_nr + 1                       # number of incident flux for later averaging
+                        flux_inc_moy = flux_inc/flux_nr
+                        for j in range(column_nb):
+                            type_sample = df.iloc[1,j]
+                            if type_sample != "Air":
                                 name_sample = df.iloc[0,j]
                                 x_sample = df.iloc[2,j]
                                 z_tempor = df.iloc[3,j]  #string
@@ -415,7 +433,7 @@ class MainWindow(QMainWindow):
                                             rpt.write('thickness = '+str(thick_sample)+'\n')
                                             rpt.write('time = '+str(time_sample)+'\n')
                                             rpt.write('wavelength = 0.71'+'\n')
-                                            rpt.write('incidentflux = '+flux_inc+'\n')
+                                            rpt.write('incidentflux = '+str(flux_inc_moy)+'\n')
                                             rpt.write('pixel_size = 0.015'+'\n')
                                         rpt.close()
                     if tempreg==True:     #if the temperature regulation has been activated..
