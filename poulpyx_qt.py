@@ -129,7 +129,7 @@ class MainWindow(QMainWindow):
     def lineup_clicked(self):
         global scan_scroll, lineup
         if os.path.isdir('/home/mar345/data/LineUp'):
-            lineup_sel = QFileDialog.getOpenFileName('/home/mar345/data/LineUp')   # if on SAXS bench computer, sets default lineup folder
+            lineup_sel = QFileDialog.getOpenFileName(directory='/home/mar345/data/LineUp')   #if on SAXS bench computer, sets default lineup folder
         else:
             lineup_sel = QFileDialog.getOpenFileName()
         lineup = lineup_sel[0]
