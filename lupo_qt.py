@@ -21,7 +21,8 @@ app.setStyle('Fusion')
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        global file_label, q_combo, peak_text, distance_text, pixel_text, time_text, incflux_text, trflux_text, thickness_text, qunit_value
+        global file_label, q_combo, peak_text, distance_text, pixel_text, time_text, incflux_text, trflux_text, thickness_text, \
+            qunit_value, k_label, ax
         super().__init__()
         self.setWindowTitle("PoulPyX")
         self.setFixedSize(QSize(800,750))  
@@ -95,7 +96,7 @@ class MainWindow(QMainWindow):
 
         # K value
         k_label = QLabel("K =",self)
-        k_label.setGeometry(320,370,130,20)
+        k_label.setGeometry(330,370,130,20)
         k_label.setFont(QFont('Arial', 12))
 
         # Figure
@@ -112,12 +113,11 @@ class MainWindow(QMainWindow):
         self.canvas.draw()
 
     def file_clicked(self):
-        global lupofilepath,q,i
+        global lupofilepath,q,iq
         lupo_sel = QFileDialog.getOpenFileName()
         lupofilepath = lupo_sel[0]
-        q,i = np.loadtxt(lupofilepath, unpack=True, usecols=(0,1))
+        q,iq = np.loadtxt(lupofilepath, unpack=True, usecols=(0,1))
         file_label.setText(str(lupofilepath))
-        #lupofilename = QFileInfo(lupofilepath).fileName()
         psplit=lupofilepath.split('/')
         path=''
         for i in psplit[:-1]:
@@ -154,12 +154,11 @@ class MainWindow(QMainWindow):
                 if q[j] < qpeak:
                     x1 = q[j]
                     x2 = q[j+1]
-                    y1 = i[j]
-                    y2 = i[j+1]
+                    y1 = iq[j]
+                    y2 = iq[j+1]
                 slope = (y1-y2)/(x1-x2)
                 intercept = y1 - slope*x1
-                i_artif = slope*qpeak + intercept
-                
+                i_orig = slope*qpeak + intercept
             setdif = 10000
             goalpeakint = float(peak_text.text())  # goal peak intensity
             time_e = float(time_text.text())
@@ -168,17 +167,19 @@ class MainWindow(QMainWindow):
             incfl_e = float(incflux_text.text())
             trfl_e = float(trflux_text.text())
             thick_e = float(thickness_text.text())
+            denom = time_e * (pixel_e**2/dist_e**2) * (trfl_e/incfl_e) * thick_e * trfl_e
+            for k in np.arange(0.1, 10000.1, 0.1):
+                i_norm_test = i_orig / (denom*k)
+                if abs(i_norm_test-goalpeakint)<setdif:
+                    kcalc = k
+                    setdif = abs(i_norm_test-goalpeakint)
+            k_label.setText("K = "+str(kcalc))
 
-      
-
-
-
-
-        #for k in np.arange(0.001, 20.001, 0.001):
-            #I_norm_test = ......  ## we need to get info from the .rpt lupo file
-            #if abs(I_norm_test-peakint)<setdif:
-            #    kset = k
-            #    setdif = abs(I_norm_test-peakint)
+            ax.plot(q,iq/(denom*kcalc),'b-',marker='o',ms=5)
+            ax.plot(qpeak,goalpeakint,marker='+',color='r',ms=8, mew=2.0)
+            plt.xlim(0.5*qpeak,1.5*qpeak)
+            plt.ylim(goalpeakint-1.0,goalpeakint+0.5)
+            self.canvas.draw()
 
 window = MainWindow()
 window.show()
