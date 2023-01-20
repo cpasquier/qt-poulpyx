@@ -22,7 +22,7 @@ app.setStyle('Fusion')
 class MainWindow(QMainWindow):
     def __init__(self):
         global file_label, q_combo, peak_text, distance_text, pixel_text, time_text, incflux_text, trflux_text, thickness_text, \
-            qunit_value, k_label, ax
+            qunit_value, k_label, ax, ppos_text
         super().__init__()
         self.setWindowTitle("PoulPyX")
         self.setFixedSize(QSize(800,750))  
@@ -36,9 +36,9 @@ class MainWindow(QMainWindow):
 
         # q units selection
         q_label = QLabel("q units", self)
-        q_label.setGeometry(130,100,40,26)
+        q_label.setGeometry(72,100,40,26)
         q_combo = QComboBox(self)
-        q_combo.setGeometry(190,100,60,26)
+        q_combo.setGeometry(120,100,60,26)
         q_combo.addItem("A-1")
         q_combo.addItem("nm-1")
         qunit_value = "A-1"
@@ -46,51 +46,58 @@ class MainWindow(QMainWindow):
 
         # Peak intensity
         peak_label = QLabel("Peak intensity (cm-1)", self)
-        peak_label.setGeometry(370,100,160,20)
+        peak_label.setGeometry(222,100,160,20)
         peak_text = QLineEdit(self)
-        peak_text.setGeometry(550,100,130,20)
+        peak_text.setGeometry(350,100,90,20)
         peak_text.setText("6.15")
+
+        # Peak position
+        ppos_label = QLabel("Peak position (A-1)", self)
+        ppos_label.setGeometry(552,100,160,20)
+        ppos_text = QLineEdit(self)
+        ppos_text.setGeometry(670,100,90,20)
+        ppos_text.setText("0.037")
 
         # Time
         time_label = QLabel("Time (s)", self)
-        time_label.setGeometry(40,170,60,20)
+        time_label.setGeometry(62,170,60,20)
         time_text = QLineEdit(self)
-        time_text.setGeometry(100,170,90,20)
+        time_text.setGeometry(120,170,90,20)
 
         # Pixel size
         pixel_label = QLabel("Pixel size (cm)", self)
-        pixel_label.setGeometry(260,170,100,20)
+        pixel_label.setGeometry(258,170,100,20)
         pixel_text = QLineEdit(self)
         pixel_text.setGeometry(350,170,90,20)
 
         # Sample to detector distance
         distance_label = QLabel("Sample-detector distance (cm)", self)
-        distance_label.setGeometry(480,170,180,20)
+        distance_label.setGeometry(483,170,180,20)
         distance_text = QLineEdit(self)
         distance_text.setGeometry(670,170,90,20)
 
         # Incident flux
         incflux_label = QLabel("Incident flux", self)
-        incflux_label.setGeometry(40,230,80,20)
+        incflux_label.setGeometry(42,240,80,20)
         incflux_text = QLineEdit(self)
-        incflux_text.setGeometry(120,230,90,20)
+        incflux_text.setGeometry(120,240,90,20)
 
         # Transmitted flux
         trflux_label = QLabel("Transmitted flux", self)
-        trflux_label.setGeometry(250,230,110,20)
+        trflux_label.setGeometry(244,240,110,20)
         trflux_text = QLineEdit(self)
-        trflux_text.setGeometry(350,230,90,20)
+        trflux_text.setGeometry(350,240,90,20)
 
         # Thickness
         thickness_label = QLabel("Thickness (cm)", self)
-        thickness_label.setGeometry(480,230,90,20)
+        thickness_label.setGeometry(573,240,90,20)
         thickness_text = QLineEdit(self)
-        thickness_text.setGeometry(580,230,90,20)
+        thickness_text.setGeometry(670,240,90,20)
         thickness_text.setText("0.238")
 
         # Button for K calculation
         k_button = QPushButton("Calculate K",self)
-        k_button.setGeometry(330,305,90,30)
+        k_button.setGeometry(330,302,90,30)
         k_button.setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(236,227,120, 255), stop:1 rgba(236,201,120,255))")
         k_button.clicked.connect(self.kbutton_clicked)
 
@@ -147,9 +154,9 @@ class MainWindow(QMainWindow):
         if (peak_text.text()!='') and (time_text.text()!='') and (pixel_text.text()!='') and (distance_text.text()!='') and \
              (incflux_text.text()!='') and (trflux_text.text()!='') and (thickness_text.text()!=''): 
             if qunit_value=="A-1":
-                qpeak = 0.037
+                qpeak = float(ppos_text.text())
             else:
-                qpeak = 0.37
+                qpeak = float(ppos_text.text()/10.0)
             for j in np.arange(0,len(q),1):
                 if q[j] < qpeak:
                     x1 = q[j]
