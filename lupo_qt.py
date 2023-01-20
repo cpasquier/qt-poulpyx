@@ -167,15 +167,15 @@ class MainWindow(QMainWindow):
             incfl_e = float(incflux_text.text())
             trfl_e = float(trflux_text.text())
             thick_e = float(thickness_text.text())
-            denom = time_e * (pixel_e**2/dist_e**2) * (trfl_e/incfl_e) * thick_e * trfl_e
+            denom = time_e * (pixel_e**2/dist_e**2) * (trfl_e/incfl_e) * thick_e * incfl_e
             for k in np.arange(0.1, 10000.1, 0.1):
-                i_norm_test = i_orig / (denom*k)
+                i_norm_test = (i_orig-8.0) / (denom*k)
                 if abs(i_norm_test-goalpeakint)<setdif:
                     kcalc = k
                     setdif = abs(i_norm_test-goalpeakint)
-            k_label.setText("K = "+str(kcalc))
+            k_label.setText("K = "+str(round(kcalc,2)))
 
-            ax.plot(q,iq/(denom*kcalc),'b-',marker='o',ms=5)
+            ax.plot(q,(iq-8.0)/(denom*kcalc),'b-',marker='o',ms=5)
             ax.plot(qpeak,goalpeakint,marker='+',color='r',ms=8, mew=2.0)
             plt.xlim(0.5*qpeak,1.5*qpeak)
             plt.ylim(goalpeakint-1.0,goalpeakint+0.5)
