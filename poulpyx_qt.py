@@ -306,7 +306,6 @@ class MainWindow(QMainWindow):
 
             workdir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
             if workdir:
-
                 temperatures = temp_text.text()
                 initials = initials_text.text()
                 repetitions = repetitions_text.text()
@@ -340,7 +339,6 @@ class MainWindow(QMainWindow):
 
                 macropath = os.path.join(workdir,str(a2)+"_macro.mac")
                 parampath =  os.path.join(workdir,str(a2)+"_parameters.csv")
-                lupopath =  os.path.join(workdir,str(a2)+"_lupo.txt")
 
                 with open(macropath, 'w') as f, open(parampath, 'w', encoding='UTF8') as h:
                     writer = csv.writer(h)
