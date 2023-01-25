@@ -386,7 +386,8 @@ class MainWindow(QMainWindow):
                             if type_sample == "Air":
                                 flux_inc = flux_inc + float(df.iloc[4,j])   # sum of incident flux for later averaging
                                 flux_nr = flux_nr + 1                       # number of incident flux for later averaging
-                        flux_inc_moy = flux_inc/flux_nr
+                        if flux_nr!=0:
+                            flux_inc_moy = flux_inc/flux_nr
                         for j in range(column_nb):
                             type_sample = df.iloc[1,j]
                             if type_sample != "Air":
@@ -433,7 +434,8 @@ class MainWindow(QMainWindow):
                                             rpt.write('thickness = '+str(thick_sample)+'\n')
                                             rpt.write('time = '+str(time_sample)+'\n')
                                             rpt.write('wavelength = 0.71'+'\n')
-                                            rpt.write('incidentflux = '+str(flux_inc_moy)+'\n')
+                                            if flux_nr!=0:
+                                                rpt.write('incidentflux = '+str(flux_inc_moy)+'\n')
                                             rpt.write('pixel_size = 0.015'+'\n')
                                         rpt.close()
                     if tempreg==True:     #if the temperature regulation has been activated..
