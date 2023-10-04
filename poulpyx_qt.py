@@ -397,7 +397,7 @@ class MainWindow(QMainWindow):
                                 thick_sample = df.iloc[6,j]
                                 z_str_list = z_tempor.split(',')   #split z_temp in a list of strings using comma sep.
                                 writer.writerow([name_sample,type_sample,x_sample,z_tempor,flux_sample,time_sample,thick_sample])   #for csv
-                                f.write('umv sax '+str(x_sample)+'\n')   #move to x pos.
+                                f.write('umv scx '+str(x_sample)+'\n')   #move to x pos.
                                 for z_sample in z_str_list:
                                     if z_sample != '' and z_sample!= ztest:  #if z is the same or if z-pos field is not filled, we don't write umv saz again
                                         f.write('umv saz '+str(z_sample)+'\n')
